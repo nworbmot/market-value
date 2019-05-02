@@ -1,0 +1,13 @@
+logging_level: INFO
+
+results_dir: 'results'
+run: '190502-test'
+
+scenario:
+  policy: ["solar","wind","solar-wind","solar-storage","wind-storage","solar-wind-storage"]#,"co2","co2-storage"]
+  parameter: [1,101,201,301,401,501]
+
+frequency: 1
+
+solver:
+  name: gurobi

@@ -5,6 +5,15 @@ wildcard_constraints:
     parameter="[0-9]*",
 
 
+rule plot_summary:
+    input:
+        summary=config['results_dir'] + "/" + config['run'] + "/csvs/summary.csv"
+    output: config['results_dir'] + "/" + config['run'] + "/graphs/rmvs-res.pdf"
+    threads: 2
+    resources: mem_mb=2000
+    script:
+        'plot_summary.py'
+
 rule solve_network:
     input:
     output:
@@ -29,16 +38,3 @@ rule make_summary:
     threads: 2
     resources: mem_mb=2000
     script: 'make_summary.py'
-
-
-rule plot_summary:
-    input:
-        costs=config['results_dir'] + '/' + config['run'] + '/csvs/costs.csv',
-        energy=config['results_dir'] + '/' + config['run'] + '/csvs/energy.csv'
-    output:
-        costs=config['results_dir'] + '/' + config['run'] + '/graphs/costs.pdf',
-        energy=config['results_dir'] + '/' + config['run'] + '/graphs/energy.pdf'
-    threads: 2
-    resources: mem_mb=10000
-    script:
-        'scripts/plot_results.py'

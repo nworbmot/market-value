@@ -170,6 +170,10 @@ def prepare_network():
 
     network.snapshot_weightings = pd.Series(float(frequency),index=network.snapshots)
 
+    network.madd("Carrier",
+                 convs,
+                 co2_emissions=assumptions.loc[convs,"co2int"])
+
     for ct in cts:
 
         network.add("Bus",ct)
@@ -195,11 +199,12 @@ def prepare_network():
 
         for conv in convs:
             network.add("Generator",ct+" " + conv,
-                    bus=ct,
-                    p_nom_extendable = True,
-                    carrier=conv,
-                    marginal_cost = assumptions.at[conv,'variable'],
-                    capital_cost = assumptions.at[conv,'fixed'])
+                        bus=ct,
+                        p_nom_extendable = True,
+                        carrier=conv,
+                        efficiency=assumptions.at[conv,'eff'],
+                        marginal_cost = assumptions.at[conv,'variable'],
+                        capital_cost = assumptions.at[conv,'fixed'])
     for ct1 in cts:
         for ct2 in cts:
             if not pd.isnull(ntcs.at[ct1,ct2]):
@@ -264,7 +269,12 @@ def prepare_network():
 
     return network
 
-def solve_network(network,penetration,load,techs):
+def solve_network(network,penetration,load,techs,emissions):
+
+    network.add("GlobalConstraint", "CO2Limit",
+                carrier_attribute="co2_emissions", sense="<=",
+                constant=emissions*load)
+
 
     def extra_functionality(network,snapshots):
 
@@ -274,7 +284,8 @@ def solve_network(network,penetration,load,techs):
 
             network.model.battery = Constraint(cts,rule=battery)
 
-        network.model.penetration = Constraint(expr=sum([network.model.generator_p[gen, sn]*network.snapshot_weightings.at[sn] for gen in network.generators.index if network.generators.at[gen,"carrier"] in techs for sn in snapshots]) == penetration*load)
+        if penetration is not None:
+            network.model.penetration = Constraint(expr=sum([network.model.generator_p[gen, sn]*network.snapshot_weightings.at[sn] for gen in network.generators.index if network.generators.at[gen,"carrier"] in techs for sn in snapshots]) == penetration*load)
 
     if solver_name == "gurobi":
         solver_options = {"threads" : 4,
@@ -287,10 +298,13 @@ def solve_network(network,penetration,load,techs):
 
 
     def extra_postprocessing(n, snapshots, duals):
-        index = list(n.model.penetration.keys())
-        cdata = pd.Series(list(n.model.penetration.values()),
-                          index=index)
-        n.penetration_dual =  -cdata.map(duals).sum()
+        if penetration is None:
+            n.penetration_dual =  0.
+        else:
+            index = list(n.model.penetration.keys())
+            cdata = pd.Series(list(n.model.penetration.values()),
+                              index=index)
+            n.penetration_dual =  -cdata.map(duals).sum()
         print("penetration dual:",n.penetration_dual)
 
 
@@ -325,20 +339,26 @@ if __name__ == "__main__":
         add_battery = False
 
     techs=[]
-    for tech in ["solar","wind"]:
-        if tech in snakemake.wildcards.policy:
-            techs.append(tech)
+    if "co2" in snakemake.wildcards.policy:
+        emissions = float(snakemake.wildcards.parameter)/1e3 #tCO2/Mwh_el on average
+        penetration = None
+        #remove nuclear to force in wind and solar
+        convs.remove("nucl")
+    else:
+        for tech in ["solar","wind"]:
+            if tech in snakemake.wildcards.policy:
+                techs.append(tech)
+        penetration = float(snakemake.wildcards.parameter)/1e3
+        emissions = 2.
 
-    penetration = float(snakemake.wildcards.parameter)/1e3
-
-    print("solving network for policy {} and penetration {}".format(snakemake.wildcards.policy,penetration))
+    print("solving network for policy {} and penetration {} and emissions {}".format(snakemake.wildcards.policy,penetration,emissions))
 
     with memory_logger(filename=getattr(snakemake.log, 'memory', None), interval=30.) as mem:
         network = prepare_network()
 
         total_load = (network.loads_t.p_set.multiply(network.snapshot_weightings,axis=0)).sum().sum()
 
-        solve_network(network,penetration,total_load,techs)
+        solve_network(network,penetration,total_load,techs,emissions)
 
         network.export_to_netcdf(snakemake.output[0])
 

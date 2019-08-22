@@ -149,14 +149,15 @@ st_techs = ["H2 CCGT","H2 electrolysis","H2 steel tank storage","H2 underground 
 
 assumptions = assumptions.reindex(assumptions.index.append(pd.Index(st_techs)))
 
-for attr in ["fixed","efficiency"]:
+for attr in ["investment","lifetime","discount rate","FOM","fixed","efficiency"]:
     assumptions.loc[st_techs,attr] = assumptions_prev.loc[st_techs,attr]
 
-assumptions
+print(assumptions)
 
 cts = ["GER","FRA","BEL","NLD","POL"]
 
-def prepare_network():
+def prepare_network(allow_transmission_expansion=False):
+    #technologies to remove
 
     network = pypsa.Network()
 
@@ -212,6 +213,7 @@ def prepare_network():
                 network.add("Link","{}->{}".format(ct1,ct2),
                             bus0=ct1,
                             bus1=ct2,
+                            p_nom_extendable=allow_transmission_expansion,
                             p_nom=ntcs.at[ct1,ct2])
     for ct in cts:
         if add_battery:
@@ -322,8 +324,17 @@ def solve_network(network,penetration,load,techs,emissions):
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
-        from pypsa.descriptors import Dict
-
+        from vresutils.snakemake import MockSnakemake, Dict
+        snakemake = MockSnakemake(
+            wildcards=dict(assumptions='wind1100-sola750-nucl4000', policy="OCGT",parameter="101"),
+            #input=dict(network="networks/{network}_s{simpl}_{clusters}_lv{lv}_{opts}.nc"),
+            #output=["results/networks/s{simpl}_{clusters}_lv{lv}_{opts}-test.nc"],
+            #log=dict(gurobi="logs/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_gurobi-test.log",
+            #         python="logs/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_python-test.log")
+        )
+        import yaml
+        with open('config.yaml') as f:
+            snakemake.config = yaml.load(f)
 
     #change to cbc or glpk for open-source solvers
     solver_name = snakemake.config["solver"]["name"]
@@ -338,23 +349,52 @@ if __name__ == "__main__":
         add_hydrogen = False
         add_battery = False
 
+
+    techs_to_remove=[]
+    allow_transmission_expansion=False
+
+    changed_assumptions = snakemake.wildcards.assumptions
+
+    for opt in changed_assumptions.split("-"):
+        for tech in assumptions.index:
+            if tech in opt:
+                if opt[len(tech):] == "None":
+                    print(tech,"None")
+                    techs_to_remove.append(tech)
+                else:
+                    print(tech,float(opt[len(tech):]))
+                    assumptions.at[tech,"invest"] = float(opt[len(tech):])
+                    assumptions.at[tech,"fixed"] = 1e3*Nyears*(annuity(lifetime,discount_rate)*assumptions.at[tech,"invest"] + assumptions.at[tech,"qfixcost"])
+        if opt == "trans":
+            allow_transmission_expansion=True
+
+            ###
+    #assumptions["fixed"] = 1e3*Nyears*(annuity(lifetime,discount_rate)*assumptions["invest"] + assumptions["qfixcost"])
+    #assumptions_prev["fixed"] = [(annuity(v["lifetime"],v["discount rate"])+v["FOM"]/100.)*v["investment"]*Nyears for i,v in assumptions_prev.iterrows()]
+
+
     techs=[]
     if "co2" in snakemake.wildcards.policy:
         emissions = float(snakemake.wildcards.parameter)/1e3 #tCO2/Mwh_el on average
         penetration = None
         #remove nuclear to force in wind and solar
-        convs.remove("nucl")
+        for tech in techs_to_remove:
+            convs.remove(tech)
     else:
-        for tech in ["solar","wind"]:
+        for tech in ["solar","wind","OCGT","CCGT"]:
             if tech in snakemake.wildcards.policy:
                 techs.append(tech)
         penetration = float(snakemake.wildcards.parameter)/1e3
         emissions = 2.
 
-    print("solving network for policy {} and penetration {} and emissions {}".format(snakemake.wildcards.policy,penetration,emissions))
+
+    print("solving network for policy {} and penetration {} and emissions {} and assumptions {}".format(snakemake.wildcards.policy,penetration,emissions,changed_assumptions))
+
+
+    print(assumptions)
 
     with memory_logger(filename=getattr(snakemake.log, 'memory', None), interval=30.) as mem:
-        network = prepare_network()
+        network = prepare_network(allow_transmission_expansion=allow_transmission_expansion)
 
         total_load = (network.loads_t.p_set.multiply(network.snapshot_weightings,axis=0)).sum().sum()
 

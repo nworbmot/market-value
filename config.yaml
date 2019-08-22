@@ -1,11 +1,12 @@
 logging_level: INFO
 
 results_dir: 'results'
-run: '190502-test'
+run: '190820-no_nuclear'
 
 scenario:
-  policy: ["solar","wind","solar-wind","solar-storage","wind-storage","solar-wind-storage","co2","co2-storage"]
-  parameter: [1,101,201,301,401,501,601,701]
+  assumptions: ["wind1100-sola750-nuclNone-trans","wind1100-sola750-nuclNone"]
+  policy: ["solar","wind","solar-wind","solar-storage","wind-storage","solar-wind-storage","co2","co2-storage"]#"OCGT","CCGT","OCGT-CCGT",
+  parameter: [1,101,201,301,401,501,601,701]#,801]
 
 frequency: 1
 

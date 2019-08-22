@@ -375,16 +375,16 @@ if __name__ == "__main__":
 
     techs=[]
     if "co2" in snakemake.wildcards.policy:
-        emissions = float(snakemake.wildcards.parameter)/1e3 #tCO2/Mwh_el on average
+        emissions = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*snakemake.config["co2_max"] #tCO2/Mwh_el on average
         penetration = None
         #remove nuclear to force in wind and solar
         for tech in techs_to_remove:
             convs.remove(tech)
     else:
-        for tech in ["solar","wind","OCGT","CCGT"]:
+        for tech in convs + ["solar","wind"]:
             if tech in snakemake.wildcards.policy:
                 techs.append(tech)
-        penetration = float(snakemake.wildcards.parameter)/1e3
+        penetration = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*snakemake.config["penetration_max"]
         emissions = 2.
 
 

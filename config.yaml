@@ -1,14 +1,20 @@
 logging_level: INFO
 
 results_dir: 'results'
-run: '190820-no_nuclear'
+run: '190822'
 
 scenario:
-  assumptions: ["wind1100-sola750-nuclNone-trans","wind1100-sola750-nuclNone"]
-  policy: ["solar","wind","solar-wind","solar-storage","wind-storage","solar-wind-storage","co2","co2-storage"]#"OCGT","CCGT","OCGT-CCGT",
-  parameter: [1,101,201,301,401,501,601,701]#,801]
+  assumptions: ["wind1100-sola750-nuclNone","wind1100-sola750-nuclNone-trans"]
+  policy: ["nucl","co2-storage"]#"OCGT","CCGT","OCGT-CCGT",
+  parameter: [0,1,2,3,4,5,6,7,8,9,10]#,801]
 
 frequency: 1
+
+# same parameter resolution used for co2 up to co2_max and penetration up to penetration_max
+parameter_max : 10
+co2_max : 1.2
+penetration_max : 1.0
+
 
 solver:
   name: gurobi

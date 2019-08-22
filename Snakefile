@@ -16,6 +16,7 @@ rule plot_summary:
 
 rule solve_network:
     input:
+        config=config['results_dir'] + '/' + config['run'] + '/configs/config.yaml'
     output:
         network=config['results_dir'] + "/" + config['run'] + "/networks/{policy}_{parameter}_{assumptions}.nc"
 #    shadow: "shallow"
@@ -38,3 +39,12 @@ rule make_summary:
     threads: 2
     resources: mem_mb=2000
     script: 'make_summary.py'
+
+rule copy_config:
+    input:
+    output:
+        config=config['results_dir'] + '/' + config['run'] + '/configs/config.yaml'
+    threads: 1
+    resources: mem_mb=1000
+    script:
+        'copy_config.py'

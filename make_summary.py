@@ -28,7 +28,7 @@ for i in df.index:
     else:
         df.at[i,"co2_shadow"] = network.global_constraints.at["CO2Limit","mu"]
 
-    for techs in [["solar"],["wind"],["solar","wind"]]:
+    for techs in [["solar"],["wind"],["solar","wind"],["nucl"]]:
         gens = network.generators.index[network.generators.carrier.isin(techs)]
 
         gen_by_bus = network.generators_t.p[gens].groupby(network.generators.bus,axis=1).sum()
@@ -41,6 +41,6 @@ for i in df.index:
 
         df.at[i,tech_name+"-penetration"] = network.generators_t.p[gens].sum().sum()/load
 
-        df.at[i,tech_name+"-mc"] = (network.generators.loc[gens,"capital_cost"]*network.generators.loc[gens,"p_nom_opt"]).sum()/network.generators_t.p[gens].multiply(network.snapshot_weightings,axis=0).sum().sum()
+        df.at[i,tech_name+"-mc"] = (network.generators.loc[gens,"capital_cost"]*network.generators.loc[gens,"p_nom_opt"] +  network.generators_t["p"][gens].multiply(network.generators.loc[gens,"marginal_cost"]).multiply(network.snapshot_weightings,axis=0).sum()).sum()/network.generators_t.p[gens].multiply(network.snapshot_weightings,axis=0).sum().sum()
 
 df.to_csv(snakemake.output["summary"])

@@ -105,7 +105,7 @@ discount_rate=0.07
 co2_price = 20
 
 
-convs = ["nucl","coal","lign","OCGT","CCGT"]
+convs = ["nucl","coal","lign","OCGT","CCGT","shed","lCCS"]
 
 ### Required functions
 
@@ -206,6 +206,8 @@ def prepare_network(allow_transmission_expansion=False):
                         efficiency=assumptions.at[conv,'eff'],
                         marginal_cost = assumptions.at[conv,'variable'],
                         capital_cost = assumptions.at[conv,'fixed'])
+
+    #NTCs between countries
     for ct1 in cts:
         for ct2 in cts:
             if not pd.isnull(ntcs.at[ct1,ct2]):
@@ -215,6 +217,39 @@ def prepare_network(allow_transmission_expansion=False):
                             bus1=ct2,
                             p_nom_extendable=allow_transmission_expansion,
                             p_nom=ntcs.at[ct1,ct2])
+
+    #existing pumped hydro (capacities in GW and efficiencies from EMMA model table capa0)
+    storage = 8. #hours at capacity
+    for ct,cap in [("GER",4.),("FRA",3.)]:
+
+        network.add("Bus",
+                    ct + " PHS",
+                    carrier="PHS")
+
+        network.add("Store",
+                    ct + " PHS",
+                    bus = ct + " PHS",
+                    e_nom=storage*cap*1e3,
+                    e_nom_extendable=False,
+                    e_cyclic=True)
+
+        network.add("Link",
+                    ct + " PHS pump",
+                    bus0 = ct,
+                    bus1 = ct + " PHS",
+                    p_nom=cap*1e3,
+                    p_nom_extendable=False,
+                    efficiency=0.7**0.5)
+
+        network.add("Link",
+                    ct + " PHS turbine",
+                    bus0 = ct + " PHS",
+                    bus1 = ct,
+                    p_nom=cap*1e3,
+                    p_nom_extendable=False,
+                    efficiency=0.7**0.5)
+
+    #extra storage options
     for ct in cts:
         if add_battery:
             network.add("Bus",ct + " battery",
@@ -272,6 +307,12 @@ def prepare_network(allow_transmission_expansion=False):
     return network
 
 def solve_network(network,penetration,load,techs,emissions):
+
+    #fix singular values
+    if penetration == 0:
+        penetration = 1e-3
+    if emissions == 0:
+        emissions = 1e-5
 
     network.add("GlobalConstraint", "CO2Limit",
                 carrier_attribute="co2_emissions", sense="<=",

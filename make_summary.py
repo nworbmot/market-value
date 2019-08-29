@@ -19,7 +19,8 @@ for i in df.index:
 
     load = network.loads_t.p.sum().sum()
 
-    df.at[i,"mp"] = network.buses_t.marginal_price[elec_buses].mean().mean()
+    #load-weighted
+    df.at[i,"mp"] = (network.buses_t.marginal_price[elec_buses].mean()*network.loads_t.p_set.sum()).sum()/load
     df.at[i,"dual"] = network.penetration_dual
     df.at[i,"objective"] = network.objective
 
@@ -36,7 +37,9 @@ for i in df.index:
         mv_by_bus = (gen_by_bus*network.buses_t.marginal_price[elec_buses]).sum()/gen_by_bus.sum()
 
         tech_name = "-".join(techs)
-        df.at[i,tech_name+"-mv"] = mv_by_bus.mean()
+
+        # load-weighted
+        df.at[i,tech_name+"-mv"] = (mv_by_bus*network.loads_t.p_set.sum()).sum()/load
         df.at[i,tech_name+"-rmv"] = df.at[i,tech_name+"-mv"]/df.at[i,"mp"]
 
         df.at[i,tech_name+"-penetration"] = network.generators_t.p[gens].sum().sum()/load

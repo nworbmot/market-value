@@ -1,19 +1,18 @@
 logging_level: INFO
 
 results_dir: 'results'
-run: '190829-validation'
+run: '190830-revamp'
 
 scenario:
-  assumptions: ["vanilla","wind1240-sola750-nucl6000"]
-  policy: ["wind","wind-solar","solar","nucl"]#"OCGT","CCGT","OCGT-CCGT",["solar","wind","solar-wind","solar-storage","wind-storage","solar-wind-storage","co2","co2-storage","nucl"]
+  #assumptions: ["wind1100-sola750-nucl6000-lCCSNone"]#["wind1100-sola750-nuclNone","wind1240-sola750-nuclNone","wind1100-sola750-nuclNone-lCCSNone","wind1240-sola750-nuclNone-lCCSNone"]#"vanilla","wind1240-sola750-nucl6000"
+  #policy: ["nucl"]#["co2","co2-storage","co2-storage-trans"]#"OCGT","CCGT","OCGT-CCGT",["solar","wind","solar-wind","solar-storage","wind-storage","solar-wind-storage","co2","co2-storage","nucl"]
+  policy: ["co2120-trans-storage-wind1240-sola750-nuclNone-lCCSNone","co2120-wind1240-sola750-nuclNone-lCCSNone","pen100nucl-wind1240-sola750-nucl6000-lCCSNone","pen070solar-wind1240-sola750-nuclNone-lCCSNone","pen070wind-wind1240-sola750-nuclNone-lCCSNone","pen070windsolar-wind1240-sola750-nuclNone-lCCSNone","pen070solar","pen070wind","pen070windsolar"]
   parameter: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]#,801]
 
 frequency: 1
 
 # same parameter resolution used for co2 up to co2_max and penetration up to penetration_max
 parameter_max : 20
-co2_max : 1.2
-penetration_max : 0.7
 
 
 solver:

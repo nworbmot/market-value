@@ -390,15 +390,35 @@ if __name__ == "__main__":
         add_hydrogen = False
         add_battery = False
 
+    if "trans" in snakemake.wildcards.policy:
+        allow_transmission_expansion=True
+    else:
+        allow_transmission_expansion=False
+
+
+    policies = snakemake.wildcards.policy.split("-")
+    policy = policies[0]
+
+    techs=[]
+    if policy[:3] == "pen":
+        penetration_max = float(policy[3:6])/100.
+        penetration = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*penetration_max
+        emissions = 2.
+        for tech in convs + ["wind","solar"]:
+            if tech in policy:
+                techs.append(tech)
+    elif policy[:3] == "co2":
+        co2_max = float(policy[3:6])/100.
+        emissions = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*co2_max #tCO2/Mwh_el on average
+        penetration = None
+    else:
+        print(policy,"not recognised!")
+        sys.exit()
 
     techs_to_remove=[]
-    allow_transmission_expansion=False
-
-    changed_assumptions = snakemake.wildcards.assumptions
-
-    for opt in changed_assumptions.split("-"):
+    for opt in policies[1:]:
         for tech in assumptions.index:
-            if tech in opt:
+            if tech == opt[:len(tech)]:
                 if opt[len(tech):] == "None":
                     print(tech,"None")
                     techs_to_remove.append(tech)
@@ -406,30 +426,12 @@ if __name__ == "__main__":
                     print(tech,float(opt[len(tech):]))
                     assumptions.at[tech,"invest"] = float(opt[len(tech):])
                     assumptions.at[tech,"fixed"] = 1e3*Nyears*(annuity(lifetime,discount_rate)*assumptions.at[tech,"invest"] + assumptions.at[tech,"qfixcost"])
-        if opt == "trans":
-            allow_transmission_expansion=True
 
-            ###
-    #assumptions["fixed"] = 1e3*Nyears*(annuity(lifetime,discount_rate)*assumptions["invest"] + assumptions["qfixcost"])
-    #assumptions_prev["fixed"] = [(annuity(v["lifetime"],v["discount rate"])+v["FOM"]/100.)*v["investment"]*Nyears for i,v in assumptions_prev.iterrows()]
+    for tech in techs_to_remove:
+        convs.remove(tech)
 
 
-    techs=[]
-    if "co2" in snakemake.wildcards.policy:
-        emissions = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*snakemake.config["co2_max"] #tCO2/Mwh_el on average
-        penetration = None
-        #remove nuclear to force in wind and solar
-        for tech in techs_to_remove:
-            convs.remove(tech)
-    else:
-        for tech in convs + ["solar","wind"]:
-            if tech in snakemake.wildcards.policy:
-                techs.append(tech)
-        penetration = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*snakemake.config["penetration_max"]
-        emissions = 2.
-
-
-    print("solving network for policy {} and penetration {} and emissions {} and assumptions {}".format(snakemake.wildcards.policy,penetration,emissions,changed_assumptions))
+    print("solving network for policy {} and penetration {} for techs {} and emissions {}".format(snakemake.wildcards.policy,penetration,techs,emissions))
 
 
     print(assumptions)

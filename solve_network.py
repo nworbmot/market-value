@@ -85,8 +85,6 @@ costs = pd.read_excel(emma_folder + "data.xls",
                       skipfooter=8)
 costs = costs.rename(columns={"Unnamed: 4" : "fuel"}).fillna(0.)
 
-costs
-
 ### Major settings (see config.yaml)
 
 year_start=2010
@@ -96,13 +94,18 @@ year_end = 2010
 Nyears = year_end - year_start + 1
 
 #years
+#From Hirth supplementary material:
+#"Nuclear plants are assumed to have a life-time of 50 years, all other plants of 25 years."
 lifetime = 25
+nucl_lifetime = 50
 
 #per unit
 discount_rate=0.07
 
 #EUR/tCO2
-co2_price = 20
+#Hirth has 20; we take 0 to compare RET to CO2
+#we use 20 for his validation (set as parameter in policy)
+co2_price = 0.
 
 
 convs = ["nucl","coal","lign","OCGT","CCGT","shed","lCCS"]
@@ -117,8 +120,14 @@ def annuity(lifetime,rate):
 
 assumptions = costs.copy()
 
+assumptions["lifetime"] = lifetime
+assumptions.at["nucl","lifetime"] = nucl_lifetime
+
+assumptions["annuity"] = assumptions["lifetime"].apply(lambda l: annuity(l,discount_rate))
+
+
 #1e3 is kW to MW
-assumptions["fixed"] = 1e3*Nyears*(annuity(lifetime,discount_rate)*assumptions["invest"] + assumptions["qfixcost"])
+assumptions["fixed"] = 1e3*Nyears*(assumptions["annuity"]*assumptions["invest"] + assumptions["qfixcost"])
 
 
 assumptions['variable'] = assumptions['varcost'] + (assumptions['fuel'] + co2_price*assumptions["co2int"])/ assumptions['eff']
@@ -152,7 +161,7 @@ assumptions = assumptions.reindex(assumptions.index.append(pd.Index(st_techs)))
 for attr in ["investment","lifetime","discount rate","FOM","fixed","efficiency"]:
     assumptions.loc[st_techs,attr] = assumptions_prev.loc[st_techs,attr]
 
-print(assumptions)
+print(assumptions[["invest","fixed","variable","eff","co2int"]])
 
 cts = ["GER","FRA","BEL","NLD","POL"]
 
@@ -426,6 +435,10 @@ if __name__ == "__main__":
                     print(tech,float(opt[len(tech):]))
                     assumptions.at[tech,"invest"] = float(opt[len(tech):])
                     assumptions.at[tech,"fixed"] = 1e3*Nyears*(annuity(lifetime,discount_rate)*assumptions.at[tech,"invest"] + assumptions.at[tech,"qfixcost"])
+        if opt[:8] == "co2price":
+            co2_price = float(opt[8:])
+            print("changing CO2 price to",co2_price)
+            assumptions['variable'] = assumptions['varcost'] + (assumptions['fuel'] + co2_price*assumptions["co2int"])/ assumptions['eff']
 
     for tech in techs_to_remove:
         convs.remove(tech)
@@ -434,7 +447,7 @@ if __name__ == "__main__":
     print("solving network for policy {} and penetration {} for techs {} and emissions {}".format(snakemake.wildcards.policy,penetration,techs,emissions))
 
 
-    print(assumptions)
+    print(assumptions[["invest","fixed","variable","eff","co2int"]])
 
     with memory_logger(filename=getattr(snakemake.log, 'memory', None), interval=30.) as mem:
         network = prepare_network(allow_transmission_expansion=allow_transmission_expansion)

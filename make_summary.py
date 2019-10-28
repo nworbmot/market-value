@@ -21,8 +21,15 @@ for i in df.index:
 
     df.at[i,"load"] = load_by_bus.sum()
 
+    prices = {"regular" : network.buses_t.marginal_price[elec_buses],
+              "zeroed" : network.buses_t.marginal_price[elec_buses].copy()}
+
+    prices["zeroed"][prices["zeroed"] < 0.] = 0.
+
+
     #load-weighted
-    df.at[i,"mp"] = (network.buses_t.marginal_price[elec_buses]*network.loads_t.p_set).sum().sum()/df.at[i,"load"]
+    df.at[i,"mp"] = (prices["regular"]*network.loads_t.p_set).sum().sum()/df.at[i,"load"]
+    df.at[i,"mp-zeroed"] = (prices["zeroed"]*network.loads_t.p_set).sum().sum()/df.at[i,"load"]
     df.at[i,"dual"] = network.penetration_dual
     df.at[i,"objective"] = network.objective
 
@@ -37,7 +44,8 @@ for i in df.index:
         #total generation
         gen_by_bus = network.generators_t.p[gens].groupby(network.generators.bus,axis=1).sum()
 
-        mv_by_bus = (gen_by_bus*network.buses_t.marginal_price[elec_buses]).sum()/gen_by_bus.sum()
+        mv_by_bus = (gen_by_bus*prices["regular"]).sum()/gen_by_bus.sum()
+        mv_by_bus_zeroed = (gen_by_bus*prices["zeroed"]).sum()/gen_by_bus.sum()
 
         #LCOE
         mc_by_bus = (network.generators.loc[gens,"capital_cost"]*network.generators.loc[gens,"p_nom_opt"] +  network.generators_t["p"][gens].multiply(network.generators.loc[gens,"marginal_cost"]).multiply(network.snapshot_weightings,axis=0).sum()).groupby(network.generators.bus).sum()/gen_by_bus.sum()
@@ -47,11 +55,15 @@ for i in df.index:
         # generation-weighted
         df.at[i,tech_name+"-mv"] = (mv_by_bus*gen_by_bus.sum()).sum()/gen_by_bus.sum().sum()
         df.at[i,tech_name+"-rmv"] = df.at[i,tech_name+"-mv"]/df.at[i,"mp"]
+        df.at[i,tech_name+"-mv-zeroed"] = (mv_by_bus_zeroed*gen_by_bus.sum()).sum()/gen_by_bus.sum().sum()
+        df.at[i,tech_name+"-rmv-zeroed"] = df.at[i,tech_name+"-mv-zeroed"]/df.at[i,"mp"]
         df.at[i,tech_name+"-mc"] = (mc_by_bus*gen_by_bus.sum()).sum()/gen_by_bus.sum().sum()
 
         # load-weighted
         df.at[i,tech_name+"-mv-load"] = (mv_by_bus*load_by_bus).sum()/load_by_bus.sum()
         df.at[i,tech_name+"-rmv-load"] = df.at[i,tech_name+"-mv-load"]/df.at[i,"mp"]
+        df.at[i,tech_name+"-mv-load-zeroed"] = (mv_by_bus_zeroed*load_by_bus).sum()/load_by_bus.sum()
+        df.at[i,tech_name+"-rmv-load-zeroed"] = df.at[i,tech_name+"-mv-load-zeroed"]/df.at[i,"mp"]
         df.at[i,tech_name+"-mc-load"] = (mc_by_bus*load_by_bus).sum()/load_by_bus.sum()
 
         df.at[i,tech_name+"-penetration"] = network.generators_t.p[gens].sum().sum()/df.at[i,"load"]

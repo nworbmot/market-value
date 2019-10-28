@@ -399,6 +399,9 @@ if __name__ == "__main__":
         add_hydrogen = False
         add_battery = False
 
+    if "battery" in snakemake.wildcards.policy:
+        add_battery = True
+
     if "trans" in snakemake.wildcards.policy:
         allow_transmission_expansion=True
     else:

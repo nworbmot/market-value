@@ -315,11 +315,13 @@ def prepare_network(allow_transmission_expansion=False):
 
     return network
 
-def solve_network(network,penetration,load,techs,emissions):
+def solve_network(network,penetration,available_penetration,load,techs,emissions):
 
     #fix singular values
     if penetration == 0:
         penetration = 1e-3
+    if available_penetration == 0:
+        available_penetration = 1e-3
     if emissions == 0:
         emissions = 1e-5
 
@@ -339,6 +341,13 @@ def solve_network(network,penetration,load,techs,emissions):
         if penetration is not None:
             network.model.penetration = Constraint(expr=sum([network.model.generator_p[gen, sn]*network.snapshot_weightings.at[sn] for gen in network.generators.index if network.generators.at[gen,"carrier"] in techs for sn in snapshots]) == penetration*load)
 
+        if available_penetration is not None:
+
+            def available_penetration_rule(model,ct):
+                return sum([network.model.generator_p_nom[gen]*(network.snapshot_weightings*network.generators_t.p_max_pu[gen]).sum() for gen in network.generators.index if network.generators.at[gen,"carrier"] in techs and network.generators.at[gen,"bus"] == ct]) == available_penetration*(network.snapshot_weightings*network.loads_t.p_set[ct]).sum()
+
+            network.model.available_penetration = Constraint(cts,rule=available_penetration_rule)
+
     if solver_name == "gurobi":
         solver_options = {"threads" : 4,
                           "method" : 2,
@@ -350,13 +359,18 @@ def solve_network(network,penetration,load,techs,emissions):
 
 
     def extra_postprocessing(n, snapshots, duals):
-        if penetration is None:
-            n.penetration_dual =  0.
-        else:
+        if penetration is not None:
             index = list(n.model.penetration.keys())
             cdata = pd.Series(list(n.model.penetration.values()),
                               index=index)
             n.penetration_dual =  -cdata.map(duals).sum()
+        elif available_penetration is not None:
+            index = list(n.model.available_penetration.keys())
+            cdata = pd.Series(list(n.model.available_penetration.values()),
+                              index=index)
+            n.penetration_dual =  -cdata.map(duals).sum()
+        else:
+            n.penetration_dual =  0.
         print("penetration dual:",n.penetration_dual)
 
 
@@ -416,6 +430,15 @@ if __name__ == "__main__":
         penetration_max = float(policy[3:6])/100.
         penetration = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*penetration_max
         emissions = 2.
+        available_penetration = None
+        for tech in convs + ["wind","solar"]:
+            if tech in policy:
+                techs.append(tech)
+    if policy[:8] == "availpen":
+        penetration_max = float(policy[8:11])/100.
+        available_penetration = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*penetration_max
+        penetration = None
+        emissions = 2.
         for tech in convs + ["wind","solar"]:
             if tech in policy:
                 techs.append(tech)
@@ -423,6 +446,7 @@ if __name__ == "__main__":
         co2_max = float(policy[3:6])/100.
         emissions = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*co2_max #tCO2/Mwh_el on average
         penetration = None
+        available_penetration = None
     else:
         print(policy,"not recognised!")
         sys.exit()
@@ -457,7 +481,7 @@ if __name__ == "__main__":
 
         total_load = (network.loads_t.p_set.multiply(network.snapshot_weightings,axis=0)).sum().sum()
 
-        solve_network(network,penetration,total_load,techs,emissions)
+        solve_network(network,penetration,available_penetration,total_load,techs,emissions)
 
         network.export_to_netcdf(snakemake.output[0])
 

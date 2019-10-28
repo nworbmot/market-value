@@ -23,3 +23,5 @@ gurobi.log
 *.pyc
 
 market_value-lion_assumptions.py
+
+old/

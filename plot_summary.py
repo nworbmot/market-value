@@ -427,7 +427,7 @@ def comparison():
         s = df.loc[policy][tech+"-mv"].copy()
         s.index = float(policy[3:6])*s.index/20
         s[ (s> 200)] = np.nan
-        s.plot(ax=ax,label="RET policy",color=ret_color,linewidth=2)
+        s.plot(ax=ax,label="VRE policy",color=ret_color,linewidth=2)
 
         policy = "co2120-{}-nuclNone-lCCSNone".format(assumptions)
 
@@ -469,13 +469,13 @@ def syscost_v_mv():
 
     s.index = (s.index/20)*float(policy[3:6])
 
-    s.plot(ax=ax,linewidth=2,color=ret_color,label="RET system cost")
+    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE system cost")
 
     s = plot_df["mp"]
 
     s.index = (s.index/20)*float(policy[3:6])
 
-    s.plot(ax=ax,linewidth=2,color=ret_color,label="RET market price",style="-.")
+    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE market price",style="-.")
 
 
 

@@ -83,5 +83,6 @@ for i in df.index:
         for carrier in cost.index:
             df.at[i,carrier + "-cost"] = cost.at[carrier]
 
+    df.at[i,"emissions"] = network.generators_t.p.multiply(network.generators.carrier.map(network.carriers.co2_emissions).fillna(0.)/network.generators.efficiency,axis=1).sum().sum()/network.loads_t.p.sum().sum()
 
 df.to_csv(snakemake.output["summary"])

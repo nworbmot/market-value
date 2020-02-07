@@ -77,7 +77,7 @@ def plot_re_penetration(policy):
         ax.legend()
 
         ax.set_ylim([0,1.3])
-        ax.set_xlim([0,55])
+        ax.set_xlim([0,30])
         ax.set_xlabel("penetration [%]")
         ax.set_ylabel("relative market value [per unit]")
 
@@ -505,17 +505,19 @@ def sys_cost(policy):
     rename = pd.Series(sdf.columns,sdf.columns)
     rename.loc[rename.index.str.contains("H2")] = "hydrogen storage"
     rename.loc[rename.index.str.contains("battery")] = "battery storage"
+    rename.loc["lign"] = "lignite"
+    rename.loc["shed"] = "load-shedding"
     plot_df = sdf.groupby(rename,axis=1).sum()
 
 
     plot_df.index = (plot_df.index/20)*float(policy[3:6])/100.
 
-    plot_df["CO$_2$"] = plot_df.index*df.loc[policy,"co2_shadow"].values
+    plot_df["CO$_2$ price"] = plot_df.index*df.loc[policy,"co2_shadow"].values
 
 
-    plot_df.drop(columns=plot_df.columns[(plot_df.abs() < 1.).all()],inplace=True)
+    plot_df.drop(columns=plot_df.columns[(plot_df.abs() < 2.).all()],inplace=True)
 
-    preferred_order = pd.Index(["nucl","lign","coal","CCGT","OCGT","wind","solar","battery storage","hydrogen storage","shed"])
+    preferred_order = pd.Index(["nucl","lignite","coal","CCGT","OCGT","wind","solar","battery storage","hydrogen storage","load-shedding"])
 
     new_index = (preferred_order&plot_df.columns).append(plot_df.columns.difference(preferred_order))
 
@@ -532,7 +534,12 @@ def sys_cost(policy):
 
     ax.set_ylim([0,150])
 
-    ax.legend(loc="upper left",ncol=2,prop={'size': 8})
+    handles,labels = ax.get_legend_handles_labels()
+
+    handles.reverse()
+    labels.reverse()
+
+    ax.legend(handles,labels,loc="upper left",ncol=2,prop={'size': 8})
 
     ax.set_xlabel("average emissions [tCO2/MWhel]")
 
@@ -575,7 +582,6 @@ def comparison():
         fig.tight_layout()
 
         fig.savefig("paper_graphics/{}/comparison-{}.pdf".format(scenario,scenario),transparent=True)
-
 
 
 
@@ -654,6 +660,63 @@ def syscost_v_mv():
     fig.savefig("paper_graphics/{}/compare-sys_cost-{}.pdf".format(scenario,scenario),transparent=True)
 
 
+def compare_with_co2():
+
+    tech = "wind-solar"
+
+    policy = "pen{}windsolar-{}-nuclNone-lCCSNone".format(pen,assumptions)
+
+    fig, ax = plt.subplots()
+    fig.set_size_inches((4,3))
+
+    plot_df = df.loc[policy].copy()
+
+    costs = plot_df.columns[plot_df.columns.str.contains("-cost")]
+
+    s = plot_df[costs].sum(axis=1)
+
+
+    s = s.divide(plot_df["load"],axis=0)
+
+    s.index = plot_df["emissions"]
+
+    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE policy")
+
+    xmax = s.index.max()
+    xmin = s.index.min()
+
+
+    #s = plot_df["mp"]
+
+    #s.index = (s.index/20)*float(policy[3:6])
+
+    #s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE market price",style="-.")
+
+    policy = "co2120-{}-nuclNone-lCCSNone".format(assumptions)
+
+    plot_df = df.loc[policy].copy()
+
+    s = plot_df[costs].sum(axis=1)
+
+    s = s.divide(plot_df["load"],axis=0)
+
+    s.index = plot_df["emissions"]
+    s.plot(ax=ax,label="CO$_2$ policy",color=co2_color,linewidth=2)
+
+    ax.set_xlim([xmax,xmin])
+
+    ax.legend(loc="upper left",ncol=1,prop={'size': 9})
+
+    ax.set_ylim([0,100])
+
+    ax.set_xlabel("average emissions [tCO2/MWhel]")
+
+    ax.set_ylabel("average system cost [€/MWh]")
+
+    fig.tight_layout()
+
+    fig.savefig("paper_graphics/{}/compare-sys_cost-co2-{}.pdf".format(scenario,scenario),transparent=True)
+
 
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
@@ -704,3 +767,4 @@ if __name__ == "__main__":
     sys_cost("co2120-trans-storage-{}-nuclNone-lCCSNone".format(assumptions))
     comparison()
     syscost_v_mv()
+    compare_with_co2()

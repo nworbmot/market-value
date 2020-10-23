@@ -121,7 +121,7 @@ def ret_tech_fig(tech,policy):
     ax.set_xlim([0,xlim[tech]])
     ax.set_ylim([0,ylim_comparison])
     ax.set_xlabel("{} penetration [%]".format(tech.replace("-","+")))
-    ax.set_ylabel("energy price [€/MWh]")
+    ax.set_ylabel("electricity price [€/MWh]")
 
     #ax.grid()
 
@@ -129,6 +129,48 @@ def ret_tech_fig(tech,policy):
 
     fig.savefig("paper_graphics/{}/mwh-{}-{}-{}.pdf".format(scenario,tech,scenario,policy),transparent=True)
 
+
+
+def ret_tech_fig_zeroed(tech,policy):
+    fig, ax = plt.subplots()
+    fig.set_size_inches((4,3))
+
+    plot_df = df.loc[policy].copy()
+
+    plot_df.index = plot_df.index/20*float(policy[3:6])
+
+    plot_df["dual"] *= -1
+
+    plot_df.rename(columns={tech + "-mc" : tech.replace("-","+") + " LCOE",
+                            "mp-zeroed" : "market price",
+                            tech + "-mv-zeroed" : tech.replace("-","+") + " MV",
+                            "dual" : tech.replace("-","+") + " FiP"},inplace=True)
+
+
+    plot_df["system cost"] = plot_df[[c for c in plot_df.columns if "-cost" in c]].sum(axis=1)/plot_df["load"]
+    sel = [tech.replace("-","+")+" MV",tech.replace("-","+") +" LCOE",tech.replace("-","+") + " FiP","market price"]#,"system cost"]
+
+
+    plot_df[sel].plot(ax=ax,linewidth=2,color=choose_color(tech) if tech != "wind-solar" else ret_color,
+                      style=[choose_style(s) for s in sel])
+        #s[ (s>1.3)] = np.nan
+        #s.plot(ax=ax,label=tech,color=colors[tech])
+
+    ax.legend(prop={'size': 9},ncol=2)
+    xlim = {"wind" : 65,
+            "solar" : 34,
+            "wind-solar" : 70,
+            "nucl" : 100}
+    ax.set_xlim([0,xlim[tech]])
+    ax.set_ylim([0,ylim_comparison])
+    ax.set_xlabel("{} penetration [%]".format(tech.replace("-","+")))
+    ax.set_ylabel("electricity price [€/MWh]")
+
+    #ax.grid()
+
+    fig.tight_layout()
+
+    fig.savefig("paper_graphics/{}/mwh-zeroed-{}-{}-{}.pdf".format(scenario,tech,scenario,policy),transparent=True)
 
 
 def ret_tech_fig_clean(tech,policy):
@@ -156,7 +198,7 @@ def ret_tech_fig_clean(tech,policy):
         #s[ (s>1.3)] = np.nan
         #s.plot(ax=ax,label=tech,color=colors[tech])
 
-    ax.legend(prop={'size': 9},ncol=2)
+    ax.legend(prop={'size': 9},ncol=1)
     xlim = {"wind" : 65,
             "solar" : 34,
             "wind-solar" : 70,
@@ -164,7 +206,7 @@ def ret_tech_fig_clean(tech,policy):
     ax.set_xlim([0,xlim[tech]])
     ax.set_ylim([0,ylim_comparison])
     ax.set_xlabel("{} penetration [%]".format(tech.replace("-","+")))
-    ax.set_ylabel("energy price [€/MWh]")
+    ax.set_ylabel("electricity price [€/MWh]")
 
     #ax.grid()
 
@@ -255,7 +297,7 @@ def co2_as_em(policy):
     ax.set_xlim([1.2,xlim])
     ax.set_xlabel("average emissions [tCO2/MWhel]")
     ax.set_ylim([0,200])
-    #ax.set_ylabel("energy cost [€/MWh]")
+    ax.set_ylabel("€/MWh, €/tCO$_2$ or %, see label")
     ax.legend(loc="upper left",prop={'size': 9})
 
     fig.tight_layout()
@@ -304,7 +346,7 @@ def co2_as_pen(policy):
     ax.set_xlim([0,xlim])
     ax.set_xlabel("wind+solar penetration [%]")
     ax.set_ylim([0,200])
-    #ax.set_ylabel("energy cost [€/MWh]")
+    ax.set_ylabel("€/MWh, €/tCO$_2$ or %, see label")
     ax.legend(loc="upper left",prop={'size': 9})
 
     fig.tight_layout()
@@ -475,7 +517,7 @@ def cot_pen_mu_clean(policy):
     ax.set_xlim([0,70])
     ax.set_xlabel("wind+solar penetration [%]")
     ax.set_ylim([0,ylim_comparison])
-    ax.set_ylabel("energy price [€/MWh]")
+    ax.set_ylabel("electricity price [€/MWh]")
     fig.legend(prop={'size': 9},
               loc='upper left', bbox_to_anchor=(0.15, 0.93))#loc="upper left",
 
@@ -563,7 +605,7 @@ def comparison():
         s = df.loc[policy][tech+"-mv"].copy()
         s.index = float(policy[3:6])*s.index/20
         s[ (s> 200)] = np.nan
-        s.plot(ax=ax,label="VRE policy",color=ret_color,linewidth=2)
+        s.plot(ax=ax,label="VRE support policy",color=ret_color,linewidth=2)
 
         policy = "co2120-{}-nuclNone-lCCSNone".format(assumptions)
 
@@ -584,6 +626,90 @@ def comparison():
         fig.savefig("paper_graphics/{}/comparison-{}.pdf".format(scenario,scenario),transparent=True)
 
 
+def nuclear_comparison():
+
+    fig, ax = plt.subplots()
+    fig.set_size_inches((4,3))
+
+    tech = "nucl"
+    policy = f'pen100{tech}-wind100000-sola100000-nucl6000-lCCSNone'
+    s = df.loc[policy][tech+"-mv"].copy()
+    s.index = float(policy[3:6])*s.index/20
+    s[ (s> 200)] = np.nan
+    s.plot(ax=ax,label="nuclear support policy",color=ret_color,linewidth=2)
+
+    policy = f'pen100{tech}-trans-storage-wind100000-sola100000-nucl6000-lCCSNone'
+    s = df.loc[policy][tech+"-mv"].copy()
+    s.index = float(policy[3:6])*s.index/20
+    s[ (s> 200)] = np.nan
+    #s.plot(ax=ax,label="support policy with flexibility",color=ret_color,linewidth=2,alpha=0.4)
+
+    policy = 'co2120-wind100000-sola100000-nucl6000-lCCSNone'
+    s = df.loc[policy][tech+"-mv"].copy()
+    s.index = df.loc[policy][tech+"-penetration"].values*100.
+    s.drop(s.index[s.index < 0.01],inplace=True)
+    s.plot(ax=ax,label="CO$_2$ policy",color=co2_color,linewidth=2)
+
+
+    policy = 'co2120-trans-storage-wind100000-sola100000-nucl6000-lCCSNone'
+    s = df.loc[policy][tech+"-mv"].copy()
+    s.index = df.loc[policy][tech+"-penetration"].values*100.
+    s.drop(s.index[s.index < 0.01],inplace=True)
+    #s.plot(ax=ax,label="CO$_2$ policy with flexibility",color=co2_color,linewidth=2,alpha=0.4)
+
+    ax.legend(loc="upper left")
+
+    ax.set_ylim([0,140])
+    ax.set_xlim([0,100])
+    ax.set_xlabel("nuclear penetration [%]")
+    ax.set_ylabel("market value [€/MWh]")
+
+    fig.tight_layout()
+
+    fig.savefig("paper_graphics/{}/nuclear-co2-support-comparison-{}.pdf".format(scenario,scenario),transparent=True)
+
+
+def flex_comparison():
+
+    fig, ax = plt.subplots()
+    fig.set_size_inches((4,3))
+
+    tech = "windsolar"
+    policy = f'pen075{tech}-wind1040-sola510-nuclNone-lCCSNone'
+    s = df.loc[policy]["wind-solar-mv"].copy()
+    s.index = float(policy[3:6])*s.index/20
+    s[ (s> 200)] = np.nan
+    s.plot(ax=ax,label="VRE support",color=ret_color,linewidth=2,alpha=0.4)
+
+    policy = f'pen100{tech}-wind1040-sola510-nuclNone-lCCSNone-trans-storage'
+    s = df.loc[policy]["wind-solar-mv"].copy()
+    s.index = float(policy[3:6])*s.index/20
+    s[ (s> 200)] = np.nan
+    s.plot(ax=ax,label="VRE support with flex",color=ret_color,linewidth=2)
+
+    policy = 'co2120-wind1040-sola510-nuclNone-lCCSNone'
+    s = df.loc[policy]["wind-solar-mv"].copy()
+    s.index = df.loc[policy]["wind-solar-penetration"].values*100.
+    s.drop(s.index[s.index < 0.01],inplace=True)
+    s.plot(ax=ax,label="CO$_2$ policy",color=co2_color,linewidth=2,alpha=0.4)
+
+
+    policy = 'co2120-trans-storage-wind1040-sola510-nuclNone-lCCSNone'
+    s = df.loc[policy]["wind-solar-mv"].copy()
+    s.index = df.loc[policy]["wind-solar-penetration"].values*100.
+    s.drop(s.index[s.index < 0.01],inplace=True)
+    s.plot(ax=ax,label="CO$_2$ policy with flex",color=co2_color,linewidth=2)
+
+    ax.legend(loc="upper left",prop={'size': 9})
+
+    ax.set_ylim([0,140])
+    ax.set_xlim([0,100])
+    ax.set_xlabel("wind+solar penetration [%]")
+    ax.set_ylabel("market value [€/MWh]")
+
+    fig.tight_layout()
+
+    fig.savefig("paper_graphics/{}/vre-co2-support-comparison-flexibility-{}.pdf".format(scenario,scenario),transparent=True)
 
 def syscost_v_mv():
     tech = "wind-solar"
@@ -604,13 +730,13 @@ def syscost_v_mv():
 
     s.index = (s.index/20)*float(policy[3:6])
 
-    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE system cost")
+    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE support: system cost")
 
     s = plot_df["mp"]
 
     s.index = (s.index/20)*float(policy[3:6])
 
-    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE market price",style="-.")
+    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE support: market price",style="-.")
 
 
 
@@ -627,14 +753,14 @@ def syscost_v_mv():
     s = s.divide(plot_df["load"],axis=0)
 
     s.index = plot_df[tech+"-penetration"].values*100.
-    s.plot(ax=ax,label="CO$_2$ system cost",color=co2_color,linewidth=2)
+    s.plot(ax=ax,label="CO$_2$: system cost",color=co2_color,linewidth=2)
 
 
     s = plot_df["mp"]
 
     s.index = plot_df[tech+"-penetration"].values*100.
 
-    s.plot(ax=ax,linewidth=2,color=co2_color,label="CO$_2$ market price",style="-.")
+    s.plot(ax=ax,linewidth=2,color=co2_color,label="CO$_2$: market price",style="-.")
 
 
     plot_df
@@ -647,13 +773,13 @@ def syscost_v_mv():
 
     ax.set_xlim([0,70])
 
-    ax.set_ylim([0,170])
+    ax.set_ylim([0,140])
 
-    ax.legend(loc="upper right",ncol=2,prop={'size': 9})
+    ax.legend(loc="upper left",ncol=1,prop={'size': 8})
 
     ax.set_xlabel("wind+solar penetration [%]")
 
-    ax.set_ylabel("energy price [€/MWh]")
+    ax.set_ylabel("electricity price [€/MWh]")
 
     fig.tight_layout()
 
@@ -680,7 +806,7 @@ def compare_with_co2():
 
     s.index = plot_df["emissions"]
 
-    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE policy")
+    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE support policy")
 
     xmax = s.index.max()
     xmin = s.index.min()
@@ -747,11 +873,13 @@ if __name__ == "__main__":
             if tech == "wind-solar" and "battery" in policy:
                 continue
             ret_tech_fig(tech,policy)
+            ret_tech_fig_zeroed(tech,policy)
             ret_tech_fig_clean(tech,policy)
 
     tech = "nucl"
     for policy in ["pen100{}-{}-nucl6000-lCCSNone".format(tech,assumptions),"pen100{}-{}-nucl10000-lCCSNone-trans-storage".format(tech,assumptions),f"pen100{tech}-{assumptions}-nucl10000-lCCSNone-coalNone-lignNone-OCGTNone-CCGTNone-trans-storage"]:
         ret_tech_fig(tech,policy)
+        ret_tech_fig_zeroed(tech,policy)
 
 
     pen_compare()
@@ -766,5 +894,7 @@ if __name__ == "__main__":
     cot_pen_mu_clean("co2120-{}-nuclNone-lCCSNone".format(assumptions))
     sys_cost("co2120-trans-storage-{}-nuclNone-lCCSNone".format(assumptions))
     comparison()
+    nuclear_comparison()
+    flex_comparison()
     syscost_v_mv()
     compare_with_co2()

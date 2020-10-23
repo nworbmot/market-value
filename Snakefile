@@ -7,7 +7,7 @@ wildcard_constraints:
 rule plot_summary:
     input:
         summary=config['results_dir'] + "/" + config['run'] + "/csvs/summary.csv"
-    output: config['results_dir'] + "/" + config['run'] + "/graphs/rmvs-res_" + config["scenario"]["policy"][0] + ".pdf"
+    output: 'paper_graphics/' + config['run'] + "/pen-compare-" + config["run"] + ".pdf"
     threads: 2
     resources: mem_mb=2000
     script:

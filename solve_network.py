@@ -357,7 +357,11 @@ def solve_network(network,penetration,available_penetration,load,techs,emissions
                           "method" : 2,
                           "crossover" : 0,
                           "BarConvTol": 1.e-5,
-                          "FeasibilityTol": 1.e-6 }
+                          "FeasibilityTol": 1.e-6,
+                          "AggFill" : 0,
+                          "PreDual" : 0,
+                          "GURO_PAR_BARDENSETHRESH" : 200,
+                          "BarHomogeneous": 1 }
     else:
         solver_options = {}
 
@@ -396,8 +400,8 @@ if __name__ == "__main__":
         snakemake = MockSnakemake(
             path='',
             wildcards=dict(policy='co2120-trans-storage-wind1040-sola510-nuclNone-lCCSNone',parameter="0"),
-            output=dict(network="results/test/0remtrans.nc"),
-            log=dict(solver="results/test/log_0remtrans.log")
+            output=dict(network="results/test/0after.nc"),
+            log=dict(solver="results/test/log_0after.log")
         )
         import yaml
         with open('config.yaml') as f:

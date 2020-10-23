@@ -38,7 +38,7 @@ for i in df.index:
     else:
         df.at[i,"co2_shadow"] = network.global_constraints.at["CO2Limit","mu"]
 
-    for techs in [["solar"],["wind"],["wind","solar"],["nucl"]]:
+    for techs in [["solar"],["wind"],["wind","solar"],["nucl"],["lign"],["coal"],["OCGT"],["CCGT"],["lCCS"]]:
         gens = network.generators.index[network.generators.carrier.isin(techs)]
 
         #total generation

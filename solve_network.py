@@ -325,6 +325,10 @@ def solve_network(network,penetration,available_penetration,load,techs,emissions
     if emissions == 0:
         emissions = 1e-5
 
+    print("\npenetration:", penetration,
+          "\navailable penetration:", available_penetration,
+          "\nemissions:", emissions)
+
     network.add("GlobalConstraint", "CO2Limit",
                 carrier_attribute="co2_emissions", sense="<=",
                 constant=emissions*load)
@@ -390,11 +394,10 @@ if __name__ == "__main__":
     if 'snakemake' not in globals():
         from vresutils.snakemake import MockSnakemake, Dict
         snakemake = MockSnakemake(
-            wildcards=dict(assumptions='wind1100-sola750-nucl4000', policy="OCGT",parameter="101"),
-            #input=dict(network="networks/{network}_s{simpl}_{clusters}_lv{lv}_{opts}.nc"),
-            #output=["results/networks/s{simpl}_{clusters}_lv{lv}_{opts}-test.nc"],
-            #log=dict(gurobi="logs/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_gurobi-test.log",
-            #         python="logs/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_python-test.log")
+            path='',
+            wildcards=dict(policy='co2120-trans-storage-wind1040-sola510-nuclNone-lCCSNone',parameter="0"),
+            output=dict(network="results/test/0remtrans.nc"),
+            log=dict(solver="results/test/log_0remtrans.log")
         )
         import yaml
         with open('config.yaml') as f:
@@ -434,7 +437,7 @@ if __name__ == "__main__":
         for tech in convs + ["wind","solar"]:
             if tech in policy:
                 techs.append(tech)
-    if policy[:8] == "availpen":
+    elif policy[:8] == "availpen":
         penetration_max = float(policy[8:11])/100.
         available_penetration = float(snakemake.wildcards.parameter)/snakemake.config["parameter_max"]*penetration_max
         penetration = None
@@ -468,6 +471,7 @@ if __name__ == "__main__":
             assumptions['variable'] = assumptions['varcost'] + (assumptions['fuel'] + co2_price*assumptions["co2int"])/ assumptions['eff']
 
     for tech in techs_to_remove:
+        print("Removing technology:",tech)
         convs.remove(tech)
 
 
@@ -483,6 +487,6 @@ if __name__ == "__main__":
 
         solve_network(network,penetration,available_penetration,total_load,techs,emissions)
 
-        network.export_to_netcdf(snakemake.output[0])
+        network.export_to_netcdf(snakemake.output.network)
 
     logger.info("Maximum memory usage: {}".format(mem.mem_usage))

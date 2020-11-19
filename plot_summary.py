@@ -297,7 +297,7 @@ def co2_as_em(policy):
     ax.set_xlim([1.2,xlim])
     ax.set_xlabel("average emissions [tCO2/MWhel]")
     ax.set_ylim([0,200])
-    ax.set_ylabel("€/MWh, €/tCO$_2$ or %, see label")
+    ax.set_ylabel("€/MWh, €/tCO$_2$ or %, see legend")
     ax.legend(loc="upper left",prop={'size': 9})
 
     fig.tight_layout()
@@ -306,6 +306,41 @@ def co2_as_em(policy):
 
 
 
+def co2_as_em_nuclear(policy):
+
+    fig, ax = plt.subplots()
+    fig.set_size_inches((4,3))
+
+
+    plot_df = df.loc[policy].copy()
+
+    plot_df.index = (plot_df.index/20)*float(policy[3:6])/100.
+
+    plot_df["nucl-penetration"] *= 100
+    plot_df.rename(columns={"nucl-mc" : "nuclear LCOE  [€/MWh]",
+                            "mp" : "average market price [€/MWh]",
+                            "nucl-mv" : "nuclear MV = LCOE [€/MWh]",
+                            "nucl-penetration" : "nuclear penetration [%]",
+                            "co2_shadow" : "CO$_2$ price [€/tCO$_2$]"},inplace=True)
+
+    sel = ["average market price [€/MWh]","nuclear MV = LCOE [€/MWh]",''
+                          "CO$_2$ price [€/tCO$_2$]",
+                            "nuclear penetration [%]",
+                           ]
+    plot_df[sel].plot(ax=ax,linewidth=2,color=[choose_color(s) for s in sel],
+                      style=[choose_style(s) for s in sel])
+        #s[ (s>1.3)] = np.nan
+        #s.plot(ax=ax,label=tech,color=colors[tech])
+
+    ax.set_xlim([1.2,0.])
+    ax.set_xlabel("average emissions [tCO2/MWhel]")
+    ax.set_ylim([0,200])
+    ax.set_ylabel("€/MWh, €/tCO$_2$ or %, see legend")
+    ax.legend(loc="upper left",prop={'size': 9})
+
+    fig.tight_layout()
+
+    fig.savefig("paper_graphics/{}/mwh-co2-{}-{}.pdf".format(scenario,scenario,policy),transparent=True)
 
 
 def co2_as_pen(policy):
@@ -346,7 +381,7 @@ def co2_as_pen(policy):
     ax.set_xlim([0,xlim])
     ax.set_xlabel("wind+solar penetration [%]")
     ax.set_ylim([0,200])
-    ax.set_ylabel("€/MWh, €/tCO$_2$ or %, see label")
+    ax.set_ylabel("€/MWh, €/tCO$_2$ or %, see legend")
     ax.legend(loc="upper left",prop={'size': 9})
 
     fig.tight_layout()
@@ -354,6 +389,40 @@ def co2_as_pen(policy):
     fig.savefig("paper_graphics/{}/mwh-pen-{}-{}.pdf".format(scenario,scenario,policy),transparent=True)
 
 
+
+def co2_as_pen_nuclear(policy):
+    fig, ax = plt.subplots()
+    fig.set_size_inches((4,3))
+
+    plot_df = df.loc[policy].copy()
+
+    plot_df.index = plot_df["nucl-penetration"].values*100.
+    plot_df.drop(plot_df.index[plot_df.index < 0.01],inplace=True)
+
+    plot_df["nucl-penetration"] *= 100
+
+    plot_df.rename(columns={"mp" : "average market price [€/MWh]",
+                            "nucl-mv" : "nuclear MV = LCOE [€/MWh]",
+                            "nucl-penetration" : "nuclear penetration [%]",
+                            "co2_shadow" : "CO$_2$ price [€/tCO$_2$]"},inplace=True)
+
+    sel = ["average market price [€/MWh]","nuclear MV = LCOE [€/MWh]","CO$_2$ price [€/tCO$_2$]",
+             "nuclear penetration [%]"
+            ]
+    plot_df[sel].plot(ax=ax,linewidth=2,color=[choose_color(s) for s in sel],
+                      style=[choose_style(s) for s in sel])
+        #s[ (s>1.3)] = np.nan
+        #s.plot(ax=ax,label=tech,color=colors[tech])
+
+    ax.set_xlim([0,100])
+    ax.set_xlabel("nuclear penetration [%]")
+    ax.set_ylim([0,200])
+    ax.set_ylabel("€/MWh, €/tCO$_2$ or %, see legend")
+    ax.legend(loc="upper left",prop={'size': 9})
+
+    fig.tight_layout()
+
+    fig.savefig("paper_graphics/{}/mwh-pen-{}-{}.pdf".format(scenario,scenario,policy),transparent=True)
 
 
 def cot_flex_compare():
@@ -711,6 +780,53 @@ def flex_comparison():
 
     fig.savefig("paper_graphics/{}/vre-co2-support-comparison-flexibility-{}.pdf".format(scenario,scenario),transparent=True)
 
+
+
+def flex_comparison_rmv():
+
+    fig, ax = plt.subplots()
+    fig.set_size_inches((4,3))
+
+    tech = "windsolar"
+    policy = f'pen075{tech}-wind1040-sola510-nuclNone-lCCSNone'
+    s = df.loc[policy]["wind-solar-rmv"].copy()
+    s.index = float(policy[3:6])*s.index/20
+    s[ (s> 200)] = np.nan
+    #remove singular items
+    s = s[:60]
+    s.plot(ax=ax,label="VRE support",color=ret_color,linewidth=2,alpha=0.4)
+
+    policy = f'pen100{tech}-wind1040-sola510-nuclNone-lCCSNone-trans-storage'
+    s = df.loc[policy]["wind-solar-rmv"].copy()
+    s.index = float(policy[3:6])*s.index/20
+    s[ (s> 200)] = np.nan
+    s.plot(ax=ax,label="VRE support with flex",color=ret_color,linewidth=2)
+
+    policy = 'co2120-wind1040-sola510-nuclNone-lCCSNone'
+    s = df.loc[policy]["wind-solar-rmv"].copy()
+    s.index = df.loc[policy]["wind-solar-penetration"].values*100.
+    s.drop(s.index[s.index < 0.01],inplace=True)
+    s.plot(ax=ax,label="CO$_2$ policy",color=co2_color,linewidth=2,alpha=0.4)
+
+
+    policy = 'co2120-trans-storage-wind1040-sola510-nuclNone-lCCSNone'
+    s = df.loc[policy]["wind-solar-rmv"].copy()
+    s.index = df.loc[policy]["wind-solar-penetration"].values*100.
+    s.drop(s.index[s.index < 0.01],inplace=True)
+    s.plot(ax=ax,label="CO$_2$ policy with flex",color=co2_color,linewidth=2)
+
+    ax.legend(loc="upper right",prop={'size': 9})
+
+    ax.set_ylim([0,1.5])
+    ax.set_xlim([0,100])
+    ax.set_xlabel("wind+solar penetration [%]")
+    ax.set_ylabel("relative market value [per unit]")
+
+    fig.tight_layout()
+
+    fig.savefig("paper_graphics/{}/vre-co2-support-comparison-flexibility-rmv-{}.pdf".format(scenario,scenario),transparent=True)
+
+
 def syscost_v_mv():
     tech = "wind-solar"
 
@@ -888,6 +1004,9 @@ if __name__ == "__main__":
         co2_as_em(policy)
         co2_as_pen(policy)
 
+    co2_as_em_nuclear('co2120-wind100000-sola100000-nucl6000-lCCSNone')
+    co2_as_pen_nuclear('co2120-wind100000-sola100000-nucl6000-lCCSNone')
+
     cot_flex_compare()
     cot_flex_compare_clean()
     cot_pen_mu("co2120-{}-nuclNone-lCCSNone".format(assumptions))
@@ -896,5 +1015,6 @@ if __name__ == "__main__":
     comparison()
     nuclear_comparison()
     flex_comparison()
+    flex_comparison_rmv()
     syscost_v_mv()
     compare_with_co2()

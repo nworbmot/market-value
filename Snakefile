@@ -19,9 +19,9 @@ rule solve_network:
     output:
         network=config['results_dir'] + "/" + config['run'] + "/networks/{policy}_{parameter}.nc"
     log:
-        solver="logs/{policy}_{parameter}_solver.log",
-        python="logs/{policy}_{parameter}_python.log",
-        memory="logs/{policy}_{parameter}_memory.log"
+        solver=config['results_dir'] + "/" + config['run'] + "/logs/{policy}_{parameter}_solver.log",
+        python=config['results_dir'] + "/" + config['run'] + "/logs/{policy}_{parameter}_python.log",
+        memory=config['results_dir'] + "/" + config['run'] + "/logs/{policy}_{parameter}_memory.log"
     threads: 4
     resources: mem=6000
     script: "solve_network.py"

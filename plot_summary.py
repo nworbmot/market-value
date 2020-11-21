@@ -18,6 +18,7 @@ colors={"wind" : "b",
         "battery storage" : "gray",
         "coal" : "k",
         "lign" : "brown",
+        "transmission" : "gray",
         "hydrogen storage" : "m",
         "shed" : "pink"}
 
@@ -618,6 +619,7 @@ def sys_cost(policy):
     rename.loc[rename.index.str.contains("battery")] = "battery storage"
     rename.loc["lign"] = "lignite"
     rename.loc["shed"] = "load-shedding"
+    rename.loc["AC"] = "transmission"
     plot_df = sdf.groupby(rename,axis=1).sum()
 
 
@@ -628,7 +630,7 @@ def sys_cost(policy):
 
     plot_df.drop(columns=plot_df.columns[(plot_df.abs() < 2.).all()],inplace=True)
 
-    preferred_order = pd.Index(["nucl","lignite","coal","CCGT","OCGT","wind","solar","battery storage","hydrogen storage","load-shedding"])
+    preferred_order = pd.Index(["transmission","nucl","lignite","coal","CCGT","OCGT","wind","solar","battery storage","hydrogen storage","load-shedding"])
 
     new_index = (preferred_order&plot_df.columns).append(plot_df.columns.difference(preferred_order))
 
@@ -643,7 +645,7 @@ def sys_cost(policy):
 
     ax.set_xlim([1.2,0])
 
-    ax.set_ylim([0,150])
+    ax.set_ylim([0,160])
 
     handles,labels = ax.get_legend_handles_labels()
 
@@ -968,7 +970,7 @@ if __name__ == "__main__":
     else:
         from pypsa.descriptors import Dict
         config = Dict()
-        config["run"] = "190919-final"
+        config["run"] = "201120-final"
         config["results_dir"] = "results"
         fn = "{}/{}/csvs/summary.csv".format(config["results_dir"],config["run"])
 
@@ -985,7 +987,7 @@ if __name__ == "__main__":
         plot_re_penetration(policy)
 
     for tech in ["wind","solar","wind-solar"]:
-        for policy in ["pen{}{}-{}-nuclNone-lCCSNone".format(pen,tech.replace("-",""),assumptions),"pen100{}-{}-nuclNone-lCCSNone-trans-storage".format(tech.replace("-",""),assumptions),"pen100{}-{}-nuclNone-lCCSNone-battery".format(tech.replace("-",""),assumptions)]:
+        for policy in ["pen{}{}-{}-nuclNone-lCCSNone".format(pen,tech.replace("-",""),assumptions),"pen100{}-{}-nuclNone-lCCSNone-trans-storage".format(tech.replace("-",""),assumptions)]:
             if tech == "wind-solar" and "battery" in policy:
                 continue
             ret_tech_fig(tech,policy)
@@ -993,7 +995,7 @@ if __name__ == "__main__":
             ret_tech_fig_clean(tech,policy)
 
     tech = "nucl"
-    for policy in ["pen100{}-{}-nucl6000-lCCSNone".format(tech,assumptions),"pen100{}-{}-nucl10000-lCCSNone-trans-storage".format(tech,assumptions),f"pen100{tech}-{assumptions}-nucl10000-lCCSNone-coalNone-lignNone-OCGTNone-CCGTNone-trans-storage"]:
+    for policy in ["pen100{}-{}-nucl6000-lCCSNone".format(tech,assumptions)]:
         ret_tech_fig(tech,policy)
         ret_tech_fig_zeroed(tech,policy)
 

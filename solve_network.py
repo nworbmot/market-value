@@ -217,13 +217,26 @@ def prepare_network(allow_transmission_expansion=False):
                         capital_cost = assumptions.at[conv,'fixed'])
 
     #NTCs between countries
+    #lengths are haversine distances between geographical mid-points of each
+    #country from https://doi.org/10.1016/j.energy.2017.06.004
+    lengths = {("GER","FRA") : 762.383916,
+               ("GER", "NLD") : 351.955565,
+               ("FRA", "BEL") : 474.615169,
+               ("BEL", "NLD") : 195.887820,
+               ("GER", "POL") : 633.501855}
     for ct1 in cts:
         for ct2 in cts:
             if not pd.isnull(ntcs.at[ct1,ct2]):
-                print("adding link",ct1,ct2,ntcs.at[ct1,ct2])
+                length = lengths[ct1,ct2] if (ct1,ct2) in lengths else lengths[ct2,ct1]
+                #assumptions from https://doi.org/10.1016/j.energy.2017.06.004 without HVDC converter
+                #1.5 for N-1, 2% FOM, 40 years, 7% discount, 1.25 for deviation from crow-flies route, 400 EUR/MW/km
+                cost = 1.5*(annuity(40,discount_rate)+0.02)*1.25*400*length
+                print("adding link",ct1,ct2,ntcs.at[ct1,ct2],"with length:",length,"km, cost:",cost,"EUR/MW/a")
                 network.add("Link","{}->{}".format(ct1,ct2),
                             bus0=ct1,
                             bus1=ct2,
+                            length=length,
+                            capital_cost=cost,
                             p_nom_extendable=allow_transmission_expansion,
                             p_nom=ntcs.at[ct1,ct2])
 

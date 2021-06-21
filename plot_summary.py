@@ -69,7 +69,7 @@ def plot_re_penetration(policy):
         s = df.loc[p][tech+"-rmv"+suffix].copy()
         s.index = s.index/20*float(pen)
         s[ (s>1.3)] = np.nan
-        s.plot(ax=ax,label=tech,color=colors[tech],linewidth=2)
+        s.plot(ax=ax,label=tech.replace("-","+"),color=colors[tech],linewidth=2)
 
         print(tech)
         for x in [0,15,30]:
@@ -375,7 +375,7 @@ def co2_as_pen(policy):
         #s.plot(ax=ax,label=tech,color=colors[tech])
 
     if "trans-storage" in policy:
-        xlim = 100.
+        xlim = plot_df["wind-solar-penetration"].max()*100
     else:
         xlim = 70.
 
@@ -773,8 +773,8 @@ def flex_comparison():
 
     ax.legend(loc="upper left",prop={'size': 9})
 
-    ax.set_ylim([0,140])
-    ax.set_xlim([0,100])
+    ax.set_ylim([0,150])
+    ax.set_xlim([0,df.loc[policy]["wind-solar-penetration"].max()*100.])
     ax.set_xlabel("wind+solar penetration [%]")
     ax.set_ylabel("market value [€/MWh]")
 
@@ -820,7 +820,7 @@ def flex_comparison_rmv():
     ax.legend(loc="upper right",prop={'size': 9})
 
     ax.set_ylim([0,1.5])
-    ax.set_xlim([0,100])
+    ax.set_xlim([0,df.loc[policy]["wind-solar-penetration"].max()*100.])
     ax.set_xlabel("wind+solar penetration [%]")
     ax.set_ylabel("relative market value [per unit]")
 
@@ -854,7 +854,7 @@ def syscost_v_mv():
 
     s.index = (s.index/20)*float(policy[3:6])
 
-    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE support: market price",style="-.")
+    s.plot(ax=ax,linewidth=2,color=ret_color,label="VRE support: market price", dashes=(3,1,1,1))
 
 
 
@@ -878,7 +878,7 @@ def syscost_v_mv():
 
     s.index = plot_df[tech+"-penetration"].values*100.
 
-    s.plot(ax=ax,linewidth=2,color=co2_color,label="CO$_2$: market price",style="-.")
+    s.plot(ax=ax,linewidth=2,color=co2_color,label="CO$_2$: market price", dashes=(3,1,1,1))
 
 
     plot_df
@@ -891,7 +891,7 @@ def syscost_v_mv():
 
     ax.set_xlim([0,70])
 
-    ax.set_ylim([0,140])
+    ax.set_ylim([0,150])
 
     ax.legend(loc="upper left",ncol=1,prop={'size': 8})
 

@@ -20,6 +20,8 @@ gurobi.log
 
 *.csv
 
+!assumptions-mv.csv
+
 *.pyc
 
 market_value-lion_assumptions.py
